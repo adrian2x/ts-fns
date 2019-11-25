@@ -1,130 +1,152 @@
-export const idx = x => x;
+import {
+  operatorImpl,
+  typeOf,
+  isNull,
+  isValue,
+  isObject,
+  isFunc,
+  isNumber,
+  isArray,
+  isString
+} from "./internals";
 
-export const not = fn => (...args) => !fn(...args);
+export const idx = x => x;
 
 export const False = () => false;
 
 export const True = () => true;
 
-export const isTruthy = x => !!x;
+export const bool = x => !!x;
 
-export const and = (...args) => args.every(x => isTruthy(x));
+const not = x => !x;
 
-export const or = (...args) => args.some(x => isTruthy(x));
+const is_ = (x, y) => x instanceof y;
 
-// export const error = (msg) => () => new Error(msg);
+const isinstance = (x, y) => x instanceof y;
 
-export const str = any => Object.prototype.toString.call(any);
+const isNot = (x, y) => !is_(x, y);
 
-// const isValue = (x) => x != null;
+export const all = (...args) => args.every(x => bool(x));
 
-const type = value => {
-  const _type = typeof value;
-  if (_type == "object") {
-    if (value) {
-      if (value instanceof String) return "string";
-      if (value instanceof Boolean) return "boolean";
-      if (value instanceof Function) return "function";
-      // IE improperly marshals typeof across execution contexts, but a
-      // cross-context object will still return false for "instanceof Object".
-      if (value instanceof Array) return "array";
+export const and_ = (...args) => all(...args);
 
-      const className = str(value);
-      // In Firefox 3.6, attempting to access iframe window objects' length
-      // property throws an NS_ERROR_FAILURE, so we need to special-case it
-      // here.
-      if (className == "[object Window]") return "object";
+export const any = (...args) => args.some(x => bool(x));
 
-      // We cannot always use constructor == Array or instanceof Array because
-      // different frames have different Array objects.
-      // Mark Miller noticed that Object.prototype.toString
-      // allows access to the unforgeable [[Class]] property.
-      //  15.2.4.2 Object.prototype.toString ( )
-      //  When the toString method is called, the following steps are taken:
-      //      1. Get the [[Class]] property of this object.
-      //      2. Compute a string value by concatenating the three strings
-      //         "[object ", Result(1), and "]".
-      //      3. Return Result(2).
-      // and this behavior survives the destruction of the execution context.
-      if (className.endsWith("Array]") || Array.isArray(value)) {
-        return "array";
-      }
-      // HACK: There is still an array case that fails.
-      //     function ArrayImpostor() {}
-      //     ArrayImpostor.prototype = [];
-      //     var impostor = new ArrayImpostor;
-      // this can be fixed by getting rid of the fast path
-      // (value instanceof Array) and solely relying on
-      // (value && Object.prototype.toString.vall(value) === '[object Array]')
-      // but that would require many more function calls and is not warranted
-      // unless closure code is receiving objects from untrusted sources.
+export const or_ = (...args) => any(...args);
 
-      // IE in cross-window calls does not correctly marshal the function type
-      // (it appears just as an object) so we cannot use just typeof val ==
-      // 'function'. However, if the object has a call property, it is a
-      // function.
-      if (className.endsWith("Function]") || typeof value.call == "function") {
-        return "function";
-      }
-      if (className == "[object Promise]" || value instanceof Promise) {
-        return "promise";
-      }
-    } else {
-      return "null";
-    }
-  } else if (_type == "function" && typeof value.call == "undefined") {
-    // In Safari typeof nodeList returns 'function', and on Firefox typeof
-    // behaves similarly for HTML{Applet,Embed,Object}, Elements and RegExps. We
-    // would like to return object for those and we can detect an invalid
-    // function by making sure that the function object has a call method.
-    return "object";
-  } else {
-    if (Number.isNaN(value)) return "NaN";
-  }
-  return _type;
+/**
+ * Returns a function that throws an error with a given message.
+ * @param msg The error message
+ */
+export const error = (msg: string) => () => {
+  throw new Error(msg);
 };
 
 export const now = new Date().getTime();
 
-/**
- * Unique id generator function (pseudo-random)
- */
-export const UID = (Math.random() * 1e9) >>> 0;
+const lt = (x, y) => {
+  const impl = operatorImpl("__lt__", x, y);
+  if (isValue(impl)) return impl;
+  return x < y;
+};
 
-const isObject = x => type(x) == "object";
+const lte = (x, y) => {
+  let impl = operatorImpl("__lte__", x, y);
+  if (isValue(impl)) return impl;
+  impl = operatorImpl("__eq__", x, y);
+  if (impl === true) return impl;
+  impl = operatorImpl("__lt__", x, y);
+  if (isValue(impl)) return impl;
+  return x <= y;
+};
 
-const isString = x => type(x) == "string";
+const eq = (x, y) => {
+  const impl = operatorImpl("__eq__", x, y);
+  if (isValue(impl)) return impl;
+  return x === y;
+};
 
-const isArray = x => type(x) == "array";
+const ne = (x, y) => !eq(x, y);
 
-const isFunction = x => type(x) == "function";
+const gte = (x, y) => {
+  let impl = operatorImpl("__gte__", x, y);
+  if (isValue(impl)) return impl;
+  impl = operatorImpl("__eq__", x, y);
+  if (impl === true) return impl;
+  impl = operatorImpl("__gt__", x, y);
+  if (isValue(impl)) return impl;
+  return x >= y;
+};
 
-const isNumber = x => type(x) == "number";
+const gt = (x, y) => {
+  const impl = operatorImpl("__gt__", x, y);
+  if (isValue(impl)) return impl;
+  return x > y;
+};
 
-const isAsync = x => str(x) == "[object AsyncFunction]";
+const add = (x, y) => {
+  const impl = operatorImpl("__add__", x, y);
+  if (isValue(impl)) return impl;
+  return x + y;
+};
 
-export const isNone = x => x == null;
+const sub = (x, y) => {
+  const impl = operatorImpl("__sub__", x, y);
+  if (isValue(impl)) return impl;
+  return x - y;
+};
 
-const eq = (x, y) => x === y;
+const div = (x, y) => {
+  const impl = operatorImpl("__div__", x, y);
+  if (isValue(impl)) return impl;
+  return x / y;
+};
 
-const ne = (x, y) => x !== y;
+const mult = (x, y) => {
+  const impl = operatorImpl("__mult__", x, y);
+  if (isValue(impl)) return impl;
+  return x * y;
+};
 
-const lte = (x, y) => x <= y;
+const mod = (x, y) => {
+  const impl = operatorImpl("__mod__", x, y);
+  if (isValue(impl)) return impl;
+  return x % y;
+};
 
-const lt = (x, y) => x < y;
+const pow = (x, y) => {
+  const impl = operatorImpl("__pow__", x, y);
+  if (isValue(impl)) return impl;
+  return Math.pow(x, y);
+};
 
-const gte = (x, y) => x >= y;
+const abs = (x: number) => {
+  const impl = operatorImpl("__pow__", x, y);
+  if (isValue(impl)) return impl;
+  return Math.abs(x);
+};
 
-const gt = (x, y) => x > y;
+const contains = (arr, y) => {
+  const impl = operatorImpl("__contains__", arr, y);
+  if (isValue(impl)) return impl;
+  return indexOf(arr, y) >= 0;
+};
 
-const comp = (x, y) => (lte(x, y) ? -1 : 1);
+const comp = (x, y) => {
+  let impl = operatorImpl("__compare__", x, y);
+  if (isNumber(impl)) return impl;
+  if (eq(x, y)) return 0;
+  impl = lte(x, y);
+  if (impl) return -1;
+  impl = gte(x, y);
+  if (impl) return 1;
+  return 0;
+};
 
 const compKey = (cmp = comp, key = idx) => (...args) =>
   cmp.apply([], args.map(key));
 
-export const map = (fn, ...args) => args.map(fn);
-
-export const sorted = (args, key = idx, reverse = false, cmp = comp) => {
+export const sorted = (args: any[], key = idx, reverse = false, cmp = comp) => {
   if (isObject(args)) args = Object.keys(args);
   const compareFn = compKey(cmp, key);
   args.sort(compareFn);
@@ -135,8 +157,10 @@ export const sorted = (args, key = idx, reverse = false, cmp = comp) => {
 };
 
 export const min = (...args) => {
-  let cmp = comp; // use lte by default
-  if (isFunction(args[0])) {
+  // Uses lte by default
+  let cmp = comp;
+  // First argument can be a comparer func
+  if (isFunc(args[0])) {
     cmp = args.shift();
   }
   args.sort(cmp);
@@ -144,8 +168,10 @@ export const min = (...args) => {
 };
 
 export const max = (...args) => {
+  // Uses lte by default
   let cmp = comp;
-  if (isFunction(args[0])) {
+  // First argument can be a comparer func
+  if (isFunc(args[0])) {
     cmp = args.shift();
   }
   args.sort(cmp);
@@ -153,16 +179,80 @@ export const max = (...args) => {
 };
 
 export const len = x => {
-  if (x["__len__"]) {
-    return x.__len__();
-  }
-  if (x.length != undefined) {
+  if (isValue(x.length)) {
     return x.length;
   }
-  if (x.size != undefined) {
+  if (isValue(x.size)) {
     return x.size;
   }
+  const impl = operatorImpl("__len__", x);
+  if (impl) return impl;
   if (isObject(x)) {
     return Object.keys(x).length;
   }
+};
+
+export const indexOf = (arr, x, fromIndex = 0) => {
+  const length = arr.length;
+  if (fromIndex < 0) {
+    fromIndex = Math.max(fromIndex + length, 0);
+  }
+  if (isString(arr)) {
+    if (fromIndex >= length) return -1;
+    return arr.indexOf(x, fromIndex);
+  }
+  for (let i = fromIndex; i < length; i++) {
+    if (arr[i] === x) return i;
+  }
+  return -1;
+};
+
+export const clone = (obj, deep = false) => {
+  if (isArray(obj)) {
+    return cloneArray(obj, deep);
+  }
+  if (isObject(obj)) {
+    if (isFunc(obj.clone)) {
+      return obj.clone();
+    }
+    const copyObj = {};
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (deep) {
+          copyObj[key] = clone(obj[key], deep);
+        } else {
+          copyObj[key] = obj[key];
+        }
+      }
+    }
+    return copyObj;
+  }
+  return obj;
+};
+
+export const cloneArray = (arr, deep = false) => {
+  if (!deep) return [].concat(arr);
+  return arr.map(item => clone(item, deep));
+};
+
+export const bind = (fn, self, ...args) => {
+  return fn.bind(self, ...args);
+};
+
+export const partial = (fn, ...args) => {
+  return bind(fn, undefined, ...args);
+};
+
+export const getattr = (x, attr) => {
+  return x[attr];
+};
+
+export const setattr = (x, attr, value) => {
+  x[attr] = value;
+  return x;
+};
+
+export const delattr = (x, attr) => {
+  delete x[attr];
+  return x;
 };
