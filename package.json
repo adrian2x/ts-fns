@@ -1,0 +1,19 @@
+{
+  "name": "ts-fns",
+  "version": "1.0.0",
+  "description": "Standard library like util functions for for JavaScript with types.",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adrian2x/ts-fns.git"
+  },
+  "author": "Adrian Cruz <adr.ca@live.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/adrian2x/ts-fns/issues"
+  },
+  "homepage": "https://github.com/adrian2x/ts-fns#readme"
+}
